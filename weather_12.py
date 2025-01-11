@@ -5,10 +5,9 @@ from sklearn.model_selection import train_test_split  # To split data
 from sklearn.preprocessing import LabelEncoder  # To convert categorical data
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor  # Models
 from sklearn.metrics import mean_squared_error  # For accuracy measurement
-from datetime import datetime, timedelta  # Handle date/time
 import pytz  # For timezone handling
 import streamlit as st  # Import Streamlit for web app
-
+from datetime import datetime, timedelta
 # API key for OpenWeatherMap
 api_key = "a5bedda26f30751cafc720db15d72c20"
 
@@ -19,9 +18,6 @@ def get_current_weather(city):
     response = requests.get(url)
     data = response.json()
 
-
-
-    print('Station is ', data['base']['stations'])
     if response.status_code != 200:
         st.error("Error fetching weather data: " + data.get('message', 'Unknown error'))
         return None
@@ -56,9 +52,11 @@ def prepare_data(data):
     y = data['RainTomorrow']
     return x, y, le
 
-
 def train_rain_model(x, y):
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+    le = LabelEncoder()
+    x_train['WindGustDir'] = le.fit_transform(x_train['WindGustDir'])
+    x_test['WindGustDir'] = le.transform(x_test['WindGustDir'])
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(x_train, y_train)
 
@@ -128,7 +126,7 @@ if st.button("Get Weather Info"):
         current_data = {
             'MinTemp': current_weather['temp_min'],
             'MaxTemp': current_weather['temp_max'],
-            'WindGustDir': compass_direction_encoded,
+            'WindGustDir': le.transform([compass_direction])[0] if compass_direction in le.classes_ else -1,
             'WindGustSpeed': current_weather['WindGustSpeed'],
             'Humidity': current_weather['humidity'],
             'Pressure': current_weather['pressure'],
